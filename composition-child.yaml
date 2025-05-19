@@ -1,0 +1,72 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+ name: xchild.debug.crossplane.io
+spec:
+  writeConnectionSecretsToNamespace: crossplane-system
+  compositeTypeRef:
+    apiVersion: debug.crossplane.io/v1alpha1
+    kind: XChild
+  mode: Pipeline
+  pipeline:
+  - step: render-with-kcl
+    functionRef:
+      name: function-kcl
+    input:
+      apiVersion: krm.kcl.dev/v1beta1
+      kind: KCLInput
+      metadata:
+        name: resource
+      spec:
+        target: Resources
+        source: |
+          # Get the XR spec fields which are our user input
+          id = option("params")?.oxr?.spec?.id or ""
+          includeGateway = option("params")?.oxr?.spec?.includeGateway or False
+          networkCount = option("params")?.oxr?.spec?.networkCount or 1
+          providerConfigName = option("params")?.oxr?.spec?.providerConfigName or "default"
+          region = option("params")?.oxr?.spec.region or "eu-central-1"
+
+          # Create number of VPCs according to spec.networkCount
+          vpcs = [{
+              apiVersion = "ec2.aws.upbound.io/v1beta1"
+              kind = "VPC"
+              metadata.name = "vpc-{}-{}".format(id, i)
+              metadata.labels = {
+                "networks.meta.fn.crossplane.io/network-id" = id
+                "networks.meta.fn.crossplane.io/vpc-id" = "vpc-{}-{}".format(id, i)
+              }
+              spec.forProvider = {
+                  region = region
+                  cidrBlock = "192.168.0.0/16"
+                  enableDnsSupport = True
+                  enableDnsHostnames = True
+              }
+              spec.providerConfigRef.name = providerConfigName
+          } for i in range(networkCount)]
+
+          # Optionally create number of gateways according to spec.networkCount and spec.includeGateway
+          gateways = [{
+              apiVersion = "ec2.aws.upbound.io/v1beta1"
+              kind = "InternetGateway"
+              metadata.name = "gateway-{}-{}".format(id, i)
+              metadata.labels = {
+                "networks.meta.fn.crossplane.io/network-id" = id
+              }
+              spec.forProvider = {
+                  region = region
+                  vpcIdSelector = {
+                    matchControllerRef = True
+                    matchLabels = {
+                      "networks.meta.fn.crossplane.io/vpc-id" = "vpc-{}-{}".format(id, i)
+                    }
+                  }
+              }
+              spec.providerConfigRef.name = providerConfigName
+          } for i in range(networkCount)] if includeGateway else []
+
+          # return any created VPCs and gateways
+          items = vpcs + gateways
+  - step: ready
+    functionRef:
+      name: function-auto-ready

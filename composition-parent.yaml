@@ -1,0 +1,49 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+ name: xparent.debug.crossplane.io
+spec:
+  writeConnectionSecretsToNamespace: crossplane-system
+  compositeTypeRef:
+    apiVersion: debug.crossplane.io/v1alpha1
+    kind: XParent
+  mode: Pipeline
+  pipeline:
+  - step: render-with-kcl
+    functionRef:
+      name: function-kcl
+    input:
+      apiVersion: krm.kcl.dev/v1beta1
+      kind: KCLInput
+      metadata:
+        name: resource
+      spec:
+        target: Resources
+        source: |
+          # Get the XR spec fields which are our user input
+          id = option("params")?.oxr?.spec?.id or ""
+          childCount = option("params")?.oxr?.spec?.childCount or 1
+          networkCount = option("params")?.oxr?.spec?.networkCount or 1
+          includeGateway = option("params")?.oxr?.spec?.includeGateway or False
+          providerConfigName = option("params")?.oxr?.spec?.providerConfigName or "default"
+          region = option("params")?.oxr?.spec.region or "eu-central-1"
+
+          # Create number of XChildren according to spec.childCount
+          xchildren = [{
+              apiVersion = "debug.crossplane.io/v1alpha1"
+              kind = "XChild"
+              metadata.name = "xchild-{}-{}".format(id, i)
+              spec = {
+                  id = "{}-{}".format(id, i)
+                  networkCount = networkCount
+                  includeGateway = includeGateway
+                  providerConfigName = providerConfigName
+                  region = region
+              }
+          } for i in range(childCount)]
+
+          # return any created children
+          items = xchildren
+  - step: ready
+    functionRef:
+      name: function-auto-ready

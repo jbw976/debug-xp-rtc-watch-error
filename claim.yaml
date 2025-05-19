@@ -1,0 +1,12 @@
+apiVersion: debug.crossplane.io/v1alpha1
+kind: Parent
+metadata:
+ name: parent
+ namespace: default
+spec:
+  id: "debugging"
+  childCount: 3
+  networkCount: 2
+  includeGateway: true
+  providerConfigName: default
+  region: eu-central-1

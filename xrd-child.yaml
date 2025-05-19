@@ -1,0 +1,40 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+ name: xchildren.debug.crossplane.io
+spec:
+  group: debug.crossplane.io
+  names:
+    kind: XChild
+    plural: xchildren
+  claimNames:
+    kind: Child
+    plural: children
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              id:
+                type: string
+                description: ID of this Network that will be included in its child resources to help discover them.
+              networkCount:
+                type: integer
+                description: The number of network objects to create.
+              includeGateway:
+                type: boolean
+                description: True to create an InternetGateway in addition to the VPC.
+              providerConfigName:
+                type: string
+                description: ProviderConfig to use to provision resources
+                default: default
+              region:
+                type: string
+                description: Region where the resources will be created
+                default: us-west-2
