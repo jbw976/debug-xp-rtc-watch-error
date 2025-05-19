@@ -1,5 +1,7 @@
 # Repro Project for Crossplane Realtime Compositions Watch Errors
 
+This repo contains repro steps and manifests for debugging watch errors in Crossplane realtime compositions, e.g., [crossplane#5957](https://github.com/crossplane/crossplane/issues/5957).
+
 ## Pre-Requisites
 
 ### Install Crossplane
@@ -9,7 +11,7 @@ Create a Kubernetes cluster, e.g. with `kind`:
 kind create cluster
 ```
 
-Install Crossplane from the `stable` release channel, e.g.:
+Install Crossplane `1.20.0-rc.1`:
 ```
 helm repo add crossplane-stable https://charts.crossplane.io/stable --force-update
 helm install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane --devel --version 1.20.0-rc.1 --set args='{"--debug"}'
@@ -55,7 +57,9 @@ kubectl apply -f claim.yaml
 Check the logs to see if the `Unhandled Error` watch error has occurred:
 ```
 kubectl -n crossplane-system logs --tail=-1 -l app=crossplane -c crossplane | grep -F -i 'Unhandled Error'
-2025-05-18T15:45:08Z    ERROR   crossplane      Unhandled Error {"logger": "UnhandledError", "error": "pkg/mod/k8s.io/client-go@v0.31.2/tools/cache/reflector.go:243: expected type *composed.Unstructured, but watch event object had type *unstructured.Unstructured"}
+2025-05-18T16:32:18Z    ERROR   crossplane      Unhandled Error {"logger": "UnhandledError", "error": "pkg/mod/k8s.io/client-go@v0.31.2/tools/cache/reflector.go:243: expected type *composed.Unstructured, but watch event obj
+ect had type *unstructured.Unstructured"}
+2025-05-18T16:33:16Z    ERROR   crossplane      Unhandled Error {"logger": "UnhandledError", "error": "pkg/mod/k8s.io/client-go@v0.31.2/tools/cache/reflector.go:243: expected type *composed.Unstructured, but watch event object had type *unstructured.Unstructured"}
 ...
 ```
 
